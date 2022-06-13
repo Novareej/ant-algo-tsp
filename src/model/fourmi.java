@@ -12,16 +12,16 @@ import java.util.stream.IntStream;
 
 public class fourmi implements Callable<fourmi> {
     //parametre pour ajuster le pheremone
-    public static final double Q= 0.0005;
+    public static final double Q= 100;
     //coefficient de la vitesse d'evaporation
-    public static final double RHO=0.2;
+    public static final double RHO=0.5;
     //importance du chemin de pheromone
-    public static final double ALPHA = 0.01;
+    public static final double ALPHA = 1;
     //importance de la distance entre source et destination
-    public static final double BETA = 9.5;
+    public static final double BETA = 5;
     private fourmisOptimisation fo ;
-    private int nombreFourmis ;
-    private route route = null ;
+    private int nombreFourmis;
+    private route route = null;
     static int invalidCityIndex = -1;
     static int nombre_de_villes = Driver.route_initial.size();
     public route getRoute() { return route ; }
@@ -70,13 +70,13 @@ public class fourmi implements Callable<fourmi> {
         boolean flag = false;
         while (!flag){
             double currentPheremoneLevel = fo.getPheromoneLevelsMatrix()[x][y].doubleValue();
-            double updatedPheremoneLevel = (1-RHO)*currentPheremoneLevel + Q/routeDistance;
+            double updatedPheremoneLevel = RHO * currentPheremoneLevel + Q/routeDistance;
             if(updatedPheremoneLevel<0.00) flag = fo.getPheromoneLevelsMatrix()[x][y].compareAndSet(0);
             else flag = fo.getPheromoneLevelsMatrix()[x][y].compareAndSet(updatedPheremoneLevel);
         }
     }
 
-    //get next ville randomly
+    //get ville de destination randomly
     private int getY(int x, HashMap<String, Boolean> visitedcities){
         int returnY = invalidCityIndex;
         double random = ThreadLocalRandom.current().nextDouble();
@@ -90,11 +90,13 @@ public class fourmi implements Callable<fourmi> {
         return returnY;
     }
 
+
     private ArrayList<Double> getTransitionProbabilites(int x, HashMap<String, Boolean> visitedcities) {
         ArrayList<Double> transitionProbabilites = new ArrayList<Double>(nombre_de_villes);
         //initialiser tous les probabilites de transition à 0
         IntStream.range(0, nombre_de_villes).forEach(i -> transitionProbabilites.add(0.0));
         double denominator = getTPDenominator(transitionProbabilites, x, visitedcities);
+        //calcul de la probabilité de transition
         IntStream.range(0, nombre_de_villes).forEach(y -> transitionProbabilites.set(y, transitionProbabilites.get(y)/denominator));
 
         return transitionProbabilites;
@@ -103,9 +105,12 @@ public class fourmi implements Callable<fourmi> {
     private double getTPDenominator(ArrayList<Double> transitionProbabilites, int x, HashMap<String, Boolean> visitedCities) {
         double denominator = 0.0;
         for (int y = 0; y < nombre_de_villes; y++) {
+            //si la ville testé n'est pas une ville initial
             if (!visitedCities.get(Driver.route_initial.get(y).getName())) {
-                if (x == y) transitionProbabilites.set(y, 0.0);
+                //si la ville testé est la ville courante => probabilité = 0
+                if(x==y) transitionProbabilites.set(y, 0.0);
                 else transitionProbabilites.set(y, getTPNumerator(x, y));
+                //
                 denominator += transitionProbabilites.get(y);
             }
         }
